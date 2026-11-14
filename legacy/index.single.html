@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>패배 분풀이 야구 ⚾ | 진 날의 스트레스 해소 게임</title>
+<meta name="description" content="응원팀이 진 날, 투수가 되어 야구공·배트·치킨·맥주병을 던지며 분풀이하는 웹 3D 게임. KBO 팬을 위한 스트레스 해소용 미니게임.">
+<meta name="theme-color" content="#0b1220">
+<meta property="og:type" content="website">
+<meta property="og:title" content="패배 분풀이 야구 ⚾">
+<meta property="og:description" content="응원팀이 진 날, 공을 던지며 분풀이하는 웹 3D 게임. 오늘 졌다면 60초 동안 던져보세요.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='88'>⚾</text></svg>">
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#0b1220;font-family:system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;user-select:none;-webkit-user-select:none}
+  canvas{display:block;touch-action:none;cursor:none}
+  #hud{position:fixed;top:12px;left:12px;right:12px;display:none;justify-content:space-between;gap:8px;pointer-events:none}
+  .chip{background:#0009;color:#fff;font-weight:800;padding:8px 14px;border-radius:12px;font-size:16px;backdrop-filter:blur(4px)}
+  .chip b{color:#fde047}
+  #powerWrap{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);display:none;flex-direction:column;align-items:center;gap:6px;pointer-events:none}
+  #powerLabel{color:#fff;font-weight:700;font-size:13px;text-shadow:0 1px 3px #000}
+  #power{width:260px;height:14px;background:#0008;border:2px solid #fff;border-radius:9px;overflow:hidden}
+  #powerFill{height:100%;width:0;background:linear-gradient(90deg,#4ade80,#facc15,#ef4444)}
+  #reticle{position:fixed;width:34px;height:34px;margin:-17px 0 0 -17px;border:2px solid #fff;border-radius:50%;box-shadow:0 0 0 2px #0006;pointer-events:none;display:none}
+  #reticle::after{content:"";position:absolute;left:50%;top:50%;width:4px;height:4px;margin:-2px;background:#ef4444;border-radius:50%}
+  .float{position:fixed;transform:translate(-50%,-100%);pointer-events:none;font-weight:900;white-space:nowrap}
+  .pts{color:#fde047;font-size:24px;text-shadow:0 2px 0 #000,0 0 8px #000}
+  .pow{color:#fff;font-size:30px;font-style:italic;text-shadow:0 3px 0 #dc2626,0 0 10px #000}
+  .bubble{background:#fff;color:#111;font-size:13px;font-weight:700;padding:5px 9px;border-radius:10px;box-shadow:0 2px 6px #0005}
+  .bubble::after{content:"";position:absolute;left:50%;bottom:-6px;margin-left:-6px;border:6px solid transparent;border-bottom:0;border-top-color:#fff}
+  #comboMsg{position:fixed;top:24%;left:50%;transform:translate(-50%,-50%);color:#fff;font-size:44px;font-weight:900;text-shadow:0 3px 0 #b91c1c,0 0 18px #000;pointer-events:none;opacity:0;transition:opacity .25s}
+  #overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(#0b1220aa,#0b1220ee);z-index:10}
+  .card{background:#111827;color:#f9fafb;border:1px solid #374151;border-radius:20px;padding:28px 30px;width:min(420px,88vw);text-align:center;box-shadow:0 20px 50px #000a}
+  .card h1{margin:0 0 6px;font-size:26px}
+  .card p{margin:6px 0 16px;color:#9ca3af;font-size:14px;line-height:1.5}
+  .swatches{display:flex;justify-content:center;gap:10px;margin:8px 0 20px;flex-wrap:wrap}
+  .sw{width:34px;height:34px;border-radius:50%;border:3px solid transparent;cursor:pointer}
+  .sw.on{border-color:#fff;box-shadow:0 0 0 2px #fde047}
+  .hero-emoji{font-size:54px;line-height:1;margin-bottom:6px}
+  .card h2{margin:0 0 4px;font-size:15px;color:#cbd5e1;font-weight:700}
+  .teams{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 18px;max-height:min(46vh,340px);overflow:auto}
+  .team{display:flex;align-items:center;gap:9px;background:#1f2937;border:2px solid transparent;border-radius:12px;padding:10px 11px;cursor:pointer;color:#e5e7eb;font-weight:800;font-size:14px;text-align:left;transition:background .12s}
+  .team:hover{background:#273244}
+  .team.on{border-color:#fde047;background:#2b3750}
+  .team .dot{width:15px;height:15px;border-radius:50%;flex:0 0 auto;box-shadow:0 0 0 2px #0005}
+  .steps{display:flex;gap:6px;justify-content:center;margin-bottom:14px}
+  .steps i{width:7px;height:7px;border-radius:50%;background:#374151}
+  .steps i.on{background:#fde047}
+  .primary{background:#fde047;color:#1a1a1a}
+  .ghost{background:transparent;color:#9ca3af;border:1px solid #374151}
+  .btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+  button{font:inherit;font-weight:800;font-size:16px;border:0;border-radius:12px;padding:12px 18px;cursor:pointer}
+  .lose{background:#ef4444;color:#fff}
+  .win{background:#374151;color:#e5e7eb}
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0 20px}
+  .stat{background:#1f2937;border-radius:12px;padding:10px}
+  .stat div:first-child{font-size:12px;color:#9ca3af}
+  .stat div:last-child{font-size:22px;font-weight:900}
+  .small{font-size:12px;color:#6b7280;margin-top:14px}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<div id="hud">
+  <div class="chip">⏱ <b id="time">60</b>초</div>
+  <div class="chip">점수 <b id="score">0</b></div>
+  <div class="chip">명중 <b id="acc">0/0</b></div>
+  <div class="chip">콤보 <b id="combo">0</b></div>
+</div>
+<div id="powerWrap"><div id="powerLabel">꾹 눌러 와인드업 → 떼면 투구 · 세게 던질수록 못 피함</div><div id="power"><div id="powerFill"></div></div></div>
+<div id="reticle"></div>
+<div id="comboMsg"></div>
+<div id="overlay"><div class="card"><h1>⚾ 불러오는 중…</h1></div></div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OutlineEffect } from 'three/addons/effects/OutlineEffect.js';
+
+const V3 = THREE.Vector3;
+const G = 9.8, BALL_R = 0.1, ROUND_TIME = 60;
+const PLATE_Z = -14;
+const BOUNDS = { x0: -6.5, x1: 6.5, z0: -18.5, z1: -10 };
+// KBO 10개 구단 (구단명 + 대표색). 로고·유니폼·실제 선수는 사용하지 않음.
+const TEAMS = [
+  { name: '두산 베어스',   color: '#131230' },
+  { name: 'LG 트윈스',     color: '#c30452' },
+  { name: 'KIA 타이거즈',  color: '#ea0029' },
+  { name: '삼성 라이온즈', color: '#074ca1' },
+  { name: '롯데 자이언츠', color: '#041e42' },
+  { name: '한화 이글스',   color: '#fc4e00' },
+  { name: 'SSG 랜더스',    color: '#ce0e2d' },
+  { name: 'KT 위즈',       color: '#2a2a2a' },
+  { name: 'NC 다이노스',   color: '#315288' },
+  { name: '키움 히어로즈', color: '#570514' },
+];
+const COLORS = TEAMS.map(t => t.color);
+const SKINS = [0xf1c9a0, 0xe0ac7e, 0xc98b5e, 0xf5d3b3];
+const IDLE_LINES = ['죄송합니다…','다음엔 이길게요!','오늘 컨디션이…','심판이 문제였어요','팬 여러분 사랑해요'];
+const DODGE_LINES = ['휴~','안 맞았지롱','피했다!','어림없지'];
+const PANIC_LINES = ['으악!','엄마!','잠깐만!'];
+const HIT_LINES = ['아야!','반성할게요…','잘못했어요!','으윽…'];
+const pick = a => a[Math.floor(Math.random()*a.length)];
+const rand = (a,b) => a + Math.random()*(b-a);
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+const lerp = (a,b,k) => a + (b-a)*k;
+const wrapAng = a => Math.atan2(Math.sin(a), Math.cos(a));
+const lerpAng = (a,b,k) => a + wrapAng(b-a)*k;
+
+// ================= 렌더러 =================
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.prepend(renderer.domElement);
+const effect = new OutlineEffect(renderer, { defaultThickness: 0.0045, defaultColor: [0.07, 0.07, 0.1] });
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(40, innerWidth/innerHeight, 0.1, 400);
+const CAM_BASE = new V3(1.9, 3.3, 4.8);
+const CAM_LOOK = new V3(0, 1.0, PLATE_Z + 1);
+camera.position.copy(CAM_BASE); camera.lookAt(CAM_LOOK);
+
+function canvasTex(w, h, draw) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t;
+}
+const noOutline = m => { m.userData.outlineParameters = { visible: false }; return m; };
+const lam = (o) => noOutline(new THREE.MeshLambertMaterial(o));
+
+// 하늘
+scene.background = canvasTex(4, 512, (x, w, h) => {
+  const g = x.createLinearGradient(0, 0, 0, h);
+  g.addColorStop(0, '#2f6fb8'); g.addColorStop(0.55, '#8cc4ec'); g.addColorStop(1, '#f6e3c4');
+  x.fillStyle = g; x.fillRect(0, 0, w, h);
+});
+scene.fog = new THREE.Fog(0xcfe3f2, 70, 160);
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0x5a7a40, 1.3));
+const sun = new THREE.DirectionalLight(0xfff1dc, 2.4);
+sun.position.set(-9, 20, 6);
+sun.target.position.set(0, 0, -8);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.bias = -0.0005;
+Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 16, bottom: -16, near: 1, far: 60 });
+scene.add(sun, sun.target);
+
+// ================= 경기장 =================
+const grassTex = canvasTex(256, 256, (x, w, h) => {
+  for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++) { x.fillStyle = (i + j) % 2 ? '#4f9a3e' : '#5aa847'; x.fillRect(i*w/8, j*h/8, w/8, h/8); }
+});
+grassTex.wrapS = grassTex.wrapT = THREE.RepeatWrapping; grassTex.repeat.set(9, 9);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(360, 360), lam({ map: grassTex }));
+ground.rotation.x = -Math.PI/2; ground.receiveShadow = true; scene.add(ground);
+
+const dirtMat = lam({ color: 0xc58c5a });
+function flat(geo, mat, x, y, z, ry = 0) { const m = new THREE.Mesh(geo, mat); m.rotation.set(-Math.PI/2, 0, ry); m.position.set(x, y, z); m.receiveShadow = true; scene.add(m); return m; }
+flat(new THREE.CircleGeometry(4.6, 48), dirtMat, 0, 0.012, PLATE_Z);
+const mound = new THREE.Mesh(new THREE.CylinderGeometry(2.7, 3.0, 0.25, 48), dirtMat); mound.position.set(0, 0.125, 0); mound.receiveShadow = true; scene.add(mound);
+const white = lam({ color: 0xffffff });
+const rubber = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.03, 0.15), white); rubber.position.set(0, 0.26, 0.3); scene.add(rubber);
+// 홈플레이트
+{ const s = new THREE.Shape(); s.moveTo(-0.22,0); s.lineTo(0.22,0); s.lineTo(0.22,-0.22); s.lineTo(0,-0.44); s.lineTo(-0.22,-0.22); s.closePath();
+  const m = flat(new THREE.ShapeGeometry(s), white, 0, 0.02, PLATE_Z + 0.2); m.rotation.z = Math.PI; }
+// 파울라인 + 베이스 라인 흙
+for (const sgn of [1, -1]) {
+  const dir = new V3(sgn, 0, 1).normalize(), ang = Math.atan2(dir.x, dir.z);
+  const path = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 21), dirtMat);
+  path.rotation.set(-Math.PI/2, 0, ang); path.position.set(dir.x*10.5, 0.011, PLATE_Z + dir.z*10.5); path.receiveShadow = true; scene.add(path);
+  const line = new THREE.Mesh(new THREE.PlaneGeometry(0.08, 80), white);
+  line.rotation.set(-Math.PI/2, 0, ang); line.position.set(dir.x*40, 0.016, PLATE_Z + dir.z*40); scene.add(line);
+  const base = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.08, 0.4), white); base.position.set(dir.x*20.5, 0.04, PLATE_Z + dir.z*20.5); base.rotation.y = Math.PI/4; scene.add(base);
+  // 타석
+  const box = new THREE.Mesh(new THREE.RingGeometry(0, 1, 4), white);
+  const frame = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(1.1, 1.8)), new THREE.LineBasicMaterial({ color: 0xffffff }));
+  frame.rotation.x = -Math.PI/2; frame.position.set(sgn*0.95, 0.02, PLATE_Z); scene.add(frame);
+}
+
+// 관중석 (응원팀 색 관중)
+let crowdTextures = [], standAccent = [];
+const STAND_TH = Math.PI - 1.3, STAND_LEN = 2.6;
+const standGroup = new THREE.Group(); scene.add(standGroup);
+function makeCrowdTex(team) {
+  return canvasTex(1024, 96, (x, w, h) => {
+    x.fillStyle = '#39404d'; x.fillRect(0, 0, w, h);
+    x.fillStyle = '#2a2f3a'; x.fillRect(0, h/2 - 6, w, 6); x.fillRect(0, h - 10, w, 10);
+    for (let px = 4; px < w; px += 12 + Math.random()*4) {
+      if (Math.random() < 0.1) continue;
+      for (const row of [0, 1]) {
+        if (Math.random() < 0.1) continue;
+        const r = Math.random(), col = r < 0.62 ? team : r < 0.8 ? '#ffffff' : pick(['#facc15','#111827','#9ca3af','#f97316']);
+        const by = (row ? h - 8 : h/2 - 4) - rand(0, 4), bh = 18, ox = px + (row ? 6 : 0);
+        x.fillStyle = col; x.fillRect(ox, by - bh, 9, bh);
+        if (Math.random() < 0.15) { x.fillRect(ox - 2, by - bh - 10, 3, 10); x.fillRect(ox + 8, by - bh - 10, 3, 10); }
+        x.fillStyle = pick(['#f1c9a0','#e0ac7e','#c98b5e','#2b2118']); x.beginPath(); x.arc(ox + 4.5, by - bh - 4, 4.5, 0, 7); x.fill();
+      }
+    }
+  });
+}
+const adTex = canvasTex(2048, 128, (x, w, h) => {
+  const ads = [['#0f172a','분풀이 스포츠'],['#b91c1c','ANGRY FAN'],['#065f46','시원한 음료'],['#1e3a8a','멘탈 회복 센터'],['#7c2d12','치킨은 이길 때도 질 때도']];
+  for (let i = 0; i < 10; i++) { const [bg, t] = ads[i % ads.length]; x.fillStyle = bg; x.fillRect(i*w/10, 0, w/10, h); x.fillStyle = '#fff'; x.font = 'bold 30px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(t, i*w/10 + w/20, h/2); }
+});
+adTex.wrapS = THREE.RepeatWrapping; adTex.repeat.set(-2, 1);
+function buildStands(team) {
+  while (standGroup.children.length) standGroup.remove(standGroup.children[0]);
+  crowdTextures = []; standAccent = [];
+  const base = makeCrowdTex(team);
+  const wall = new THREE.Mesh(new THREE.CylinderGeometry(9.6, 9.6, 2.4, 64, 1, true, STAND_TH, STAND_LEN), lam({ map: adTex, side: THREE.DoubleSide }));
+  wall.position.set(0, 1.2, PLATE_Z); standGroup.add(wall);
+  let y = 2.4, R = 9.6;
+  const stepMat = lam({ color: 0x8b93a1, side: THREE.DoubleSide });
+  for (let i = 0; i < 11; i++) {
+    const top = new THREE.Mesh(new THREE.RingGeometry(R, R + 1.3, 64, 1, STAND_TH - Math.PI/2, STAND_LEN), stepMat);
+    top.rotation.x = -Math.PI/2; top.position.set(0, y, PLATE_Z); standGroup.add(top);
+    R += 1.3;
+    const t = base.clone(); t.wrapS = THREE.RepeatWrapping; t.repeat.set(-R*STAND_LEN/22, 1); t.offset.x = Math.random(); t.needsUpdate = true; crowdTextures.push(t);
+    const riser = new THREE.Mesh(new THREE.CylinderGeometry(R, R, 0.8, 72, 1, true, STAND_TH, STAND_LEN), lam({ map: t, side: THREE.DoubleSide }));
+    riser.position.set(0, y + 0.4, PLATE_Z); standGroup.add(riser);
+    y += 0.8;
+  }
+  const rimMat = lam({ color: new THREE.Color(team).multiplyScalar(0.8), side: THREE.DoubleSide }); standAccent.push(rimMat);
+  const rim = new THREE.Mesh(new THREE.CylinderGeometry(R + 0.2, R + 0.2, 2.2, 72, 1, true, STAND_TH, STAND_LEN), rimMat);
+  rim.position.set(0, y + 1.1, PLATE_Z); standGroup.add(rim);
+  const roof = new THREE.Mesh(new THREE.RingGeometry(R - 6, R + 0.2, 64, 1, STAND_TH - Math.PI/2, STAND_LEN), lam({ color: 0xe5e7eb, side: THREE.DoubleSide }));
+  roof.rotation.x = -Math.PI/2; roof.position.set(0, y + 2.2, PLATE_Z); standGroup.add(roof);
+}
+// 조명탑
+for (const sgn of [1, -1]) {
+  const a = Math.PI - sgn*1.45, x = Math.sin(a)*33, z = PLATE_Z + Math.cos(a)*33;
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.6, 30, 10), lam({ color: 0x6b7280 })); pole.position.set(x, 15, z); scene.add(pole);
+  const panelTex = canvasTex(256, 160, (c, w, h) => { c.fillStyle = '#374151'; c.fillRect(0, 0, w, h); for (let i = 0; i < 6; i++) for (let j = 0; j < 4; j++) { c.fillStyle = '#fffbe6'; c.fillRect(12 + i*40, 12 + j*37, 32, 28); } });
+  const panel = new THREE.Mesh(new THREE.BoxGeometry(7, 4.2, 0.6), [lam({ color: 0x374151 }), lam({ color: 0x374151 }), lam({ color: 0x374151 }), lam({ color: 0x374151 }), noOutline(new THREE.MeshBasicMaterial({ map: panelTex })), lam({ color: 0x374151 })]);
+  panel.position.set(x, 31, z); panel.lookAt(0, 0, PLATE_Z + 4); scene.add(panel);
+}
+// 전광판
+const boardCanvas = document.createElement('canvas'); boardCanvas.width = 768; boardCanvas.height = 288;
+const boardTex = new THREE.CanvasTexture(boardCanvas); boardTex.colorSpace = THREE.SRGBColorSpace;
+const board = new THREE.Group();
+const bframe = new THREE.Mesh(new THREE.BoxGeometry(15, 6.2, 0.8), lam({ color: 0x1f2937 })); board.add(bframe);
+const bscreen = new THREE.Mesh(new THREE.PlaneGeometry(14.2, 5.4), noOutline(new THREE.MeshBasicMaterial({ map: boardTex }))); bscreen.position.z = 0.41; board.add(bscreen);
+const bleg = new THREE.Mesh(new THREE.BoxGeometry(1, 6, 0.6), lam({ color: 0x4b5563 })); bleg.position.y = -5.5; board.add(bleg);
+board.position.set(0, 23, PLATE_Z - 30); scene.add(board);
+let boardMsg = '오늘 패배… 분풀이 준비', boardDirty = true;
+function drawBoard() {
+  const x = boardCanvas.getContext('2d'), w = 768, h = 288;
+  x.fillStyle = '#05070c'; x.fillRect(0, 0, w, h);
+  x.fillStyle = '#111827'; for (let i = 0; i < w; i += 6) x.fillRect(i, 0, 1, h);
+  x.font = 'bold 34px sans-serif'; x.fillStyle = '#fbbf24'; x.textAlign = 'left'; x.fillText('분풀이 전광판', 24, 48);
+  x.textAlign = 'right'; x.fillStyle = '#f87171'; x.fillText('⏱ ' + Math.ceil(timeLeft), w - 24, 48);
+  x.textAlign = 'center'; x.fillStyle = '#fff'; x.font = 'bold 96px sans-serif'; x.fillText(score, w/2, 150);
+  x.font = 'bold 30px sans-serif'; x.fillStyle = '#93c5fd'; x.fillText(`명중 ${hits}/${throws}   ·   콤보 ${combo}`, w/2, 200);
+  x.fillStyle = '#fde047'; x.font = 'bold 34px sans-serif'; x.fillText(boardMsg, w/2, 258);
+  boardTex.needsUpdate = true; boardDirty = false;
+}
+
+// ================= 캐릭터 (관절 뼈대) =================
+const gradMap = new THREE.DataTexture(new Uint8Array([90, 170, 255]), 3, 1, THREE.RedFormat);
+gradMap.minFilter = gradMap.magFilter = THREE.NearestFilter; gradMap.needsUpdate = true;
+const toon = (c, extra = {}) => new THREE.MeshToonMaterial({ color: c, gradientMap: gradMap, ...extra });
+const GEO = {};
+const capG = (r, l) => GEO['c' + r + l] ||= new THREE.CapsuleGeometry(r, l, 5, 12);
+const sphG = () => GEO.s ||= new THREE.SphereGeometry(1, 18, 14);
+const cylG = () => GEO.cy ||= new THREE.CylinderGeometry(1, 1, 1, 18);
+const domeG = () => GEO.dome ||= new THREE.SphereGeometry(0.124, 20, 10, 0, Math.PI*2, 0, Math.PI/2);
+const brimG = () => GEO.brim ||= new THREE.CylinderGeometry(0.105, 0.105, 0.014, 20, 1, false, -Math.PI/2, Math.PI);
+const shoeG = () => GEO.shoe ||= new THREE.CapsuleGeometry(0.05, 0.16, 4, 8);
+const eyeMat = toon(0x111111), darkMat = toon(0x1c1c22), gloveMat = toon(0x8b5a2b);
+
+function numberMat(n, size) {
+  const t = canvasTex(128, 128, (x) => { x.font = `900 ${size}px sans-serif`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.lineWidth = 8; x.strokeStyle = '#0006'; x.strokeText(n, 64, 68); x.fillStyle = '#fff'; x.fillText(n, 64, 68); });
+  return noOutline(new THREE.MeshToonMaterial({ map: t, transparent: true, gradientMap: gradMap, depthWrite: false }));
+}
+function makeCharacter(o) {
+  const root = new THREE.Group(), b = {}, meshes = [];
+  const bone = (name, parent, x, y, z) => { const g = new THREE.Group(); g.position.set(x, y, z); parent.add(g); b[name] = g; return g; };
+  const part = (parent, geo, mat, p = [0,0,0], s = [1,1,1], r = [0,0,0]) => { const m = new THREE.Mesh(geo, mat); m.position.set(...p); m.scale.set(...s); m.rotation.set(...r); m.castShadow = true; parent.add(m); meshes.push(m); return m; };
+  const skin = toon(o.skin);
+  bone('hips', root, 0, 0.98, 0);
+  part(b.hips, sphG(), o.pants, [0, 0, 0], [0.155, 0.135, 0.115]);
+  part(b.hips, cylG(), darkMat, [0, 0.1, 0], [0.15, 0.035, 0.115]);
+  bone('spine', b.hips, 0, 0.1, 0);
+  part(b.spine, sphG(), o.jersey, [0, 0.08, 0], [0.142, 0.19, 0.1]);
+  bone('chest', b.spine, 0, 0.17, 0);
+  part(b.chest, capG(0.115, 0.2), o.jersey, [0, 0.11, 0], [1.4, 1, 0.72]);
+  if (o.number != null) {
+    part(b.chest, GEO.pf ||= new THREE.PlaneGeometry(0.1, 0.1), numberMat(o.number, 84), [0.075, 0.18, 0.124]).castShadow = false;
+    const back = part(b.chest, GEO.pb ||= new THREE.PlaneGeometry(0.22, 0.22), numberMat(o.number, 100), [0, 0.13, -0.125], [1,1,1], [0, Math.PI, 0]); back.castShadow = false;
+  }
+  bone('neck', b.chest, 0, 0.32, 0);
+  part(b.neck, cylG(), skin, [0, 0.03, 0], [0.05, 0.12, 0.05]);
+  bone('head', b.neck, 0, 0.08, 0);
+  part(b.head, sphG(), skin, [0, 0.1, 0.005], [0.11, 0.124, 0.115]);
+  for (const s of [1, -1]) {
+    part(b.head, sphG(), skin, [s*0.108, 0.095, 0], [0.016, 0.03, 0.024]);
+    part(b.head, sphG(), eyeMat, [s*0.042, 0.11, 0.104], [0.014, 0.017, 0.01]);
+    part(b.head, sphG(), eyeMat, [s*0.045, 0.142, 0.1], [0.026, 0.006, 0.01], [0, 0, -s*0.12]);
+  }
+  part(b.head, sphG(), skin, [0, 0.083, 0.118], [0.017, 0.022, 0.02]);
+  part(b.head, sphG(), toon(0x9a4b3b), [0, 0.045, 0.104], [0.03, 0.007, 0.01]);
+  part(b.head, domeG(), o.cap, [0, 0.13, 0], [1, 0.85, 1.03]);
+  part(b.head, brimG(), o.cap, [0, 0.133, 0.075], [1, 1, 1.25], [0.12, 0, 0]);
+  for (const [s, L] of [[1, 'L'], [-1, 'R']]) {
+    const ua = bone('ua' + L, b.chest, s*0.215, 0.25, 0);
+    part(ua, capG(0.055, 0.08), o.jersey, [0, -0.055, 0]);
+    part(ua, capG(0.044, 0.18), o.sleeve || skin, [0, -0.15, 0]);
+    const el = bone('el' + L, ua, 0, -0.29, 0);
+    part(el, capG(0.038, 0.18), o.sleeve || skin, [0, -0.12, 0]);
+    const ha = bone('ha' + L, el, 0, -0.25, 0);
+    if (o.glove && s === 1) part(ha, sphG(), gloveMat, [0, -0.07, 0.02], [0.06, 0.1, 0.09]);
+    else part(ha, sphG(), skin, [0, -0.045, 0], [0.042, 0.058, 0.03]);
+    const th = bone('th' + L, b.hips, s*0.1, -0.04, 0);
+    part(th, capG(0.07, 0.30), o.pants, [0, -0.2, 0]);
+    const kn = bone('kn' + L, th, 0, -0.44, 0);
+    part(kn, capG(0.064, 0.06), o.pants, [0, -0.04, 0]);
+    part(kn, capG(0.052, 0.28), o.socks, [0, -0.21, 0]);
+    const an = bone('an' + L, kn, 0, -0.42, 0);
+    part(an, shoeG(), darkMat, [0, -0.025, 0.06], [1.1, 1, 0.9], [Math.PI/2, 0, 0]);
+  }
+  root.traverse(m => { if (m.isMesh) m.userData.ownerRoot = root; });
+  return { root, b, meshes, rest: { hipsY: 0.98 } };
+}
+
+// ================= 애니메이션 시스템 =================
+const CH = ['hips','spine','chest','neck','head','uaL','elL','haL','uaR','elR','haR','thL','knL','anL','thR','knR','anR','hp'];
+const BASE = { uaL: [0, 0, 0.1], uaR: [0, 0, -0.1], elL: [-0.2, 0, 0], elR: [-0.2, 0, 0], knL: [0.05, 0, 0], knR: [0.05, 0, 0], thL: [-0.03, 0, 0.02], thR: [-0.03, 0, -0.02] };
+const pad = v => [v[0] || 0, v[1] || 0, v[2] || 0];
+function full(p) { const o = {}; for (const c of CH) o[c] = pad(p[c] || BASE[c] || [0,0,0]); return o; }
+function mirror(p) {
+  const o = {};
+  for (const c of CH) {
+    const src = c.endsWith('L') ? c.slice(0, -1) + 'R' : c.endsWith('R') ? c.slice(0, -1) + 'L' : c;
+    const v = p[src] ? pad(p[src]) : null; if (!v) continue;
+    o[c] = c === 'hp' ? [-v[0], v[1], v[2]] : [v[0], -v[1], -v[2]];
+  }
+  return o;
+}
+function clip(dur, loop, keys) {
+  return { dur, loop, keys: keys.map(([t, p]) => ({ t, p: full(p) })) };
+}
+function cycle(dur, A, B) { return clip(dur, true, [[0, A], [dur*0.25, B], [dur*0.5, mirror(A)], [dur*0.75, mirror(B)], [dur, A]]); }
+
+const IDLE_A = { thL: [-0.05, 0, 0.05], knL: [0.1], anL: [-0.05], thR: [-0.05, 0, -0.05], knR: [0.1], anR: [-0.05] };
+const STAND_LIE = { hips: [-1.52], hp: [0, -0.81, -0.55], head: [0.05, 0.35, 0], uaL: [0, 0, 1.1], elL: [-0.4], uaR: [0, 0, -1.3], elR: [-0.2], thL: [-0.1, 0, 0.1], knL: [0.15], thR: [-0.22, 0, -0.1], knR: [0.6], anL: [0.3], anR: [0.2] };
+const P_SET = { hips: [0, -0.25, 0], spine: [0.12], head: [0, 0.25, 0], uaL: [-0.45, 0, -0.25], elL: [-1.75], uaR: [-0.4, 0, 0.25], elR: [-1.8], thL: [-0.12, 0, 0.08], knL: [0.2], anL: [-0.1], thR: [-0.08, 0, -0.08], knR: [0.15], anR: [-0.08] };
+const P_LIFT = { hips: [0, -1.25, 0], hp: [0, 0.02, 0], spine: [0.05, 0, 0.06], chest: [0, -0.2, 0], head: [0, 1.35, 0], thL: [-1.5], knL: [1.75], anL: [0.35], thR: [-0.08], knR: [0.25], anR: [-0.1], uaL: [-0.6, 0, -0.3], elL: [-1.6], uaR: [-0.6, 0, 0.3], elR: [-1.6] };
+
+const CLIPS = {
+  idle: clip(3.2, true, [[0, IDLE_A], [1.6, { ...IDLE_A, hp: [0.015, -0.012, 0], chest: [0.04], spine: [0, 0.06, 0], head: [0.06, 0.18, 0], uaL: [0, 0, 0.15], uaR: [0.05, 0, -0.15] }], [3.2, IDLE_A]]),
+  walk: cycle(0.95,
+    { hp: [0, -0.02, 0], spine: [0.05, 0.08, 0], thL: [-0.45], knL: [0.12], anL: [-0.2], thR: [0.35], knR: [0.35], anR: [0.3], uaL: [0.4, 0, 0.1], elL: [-0.25], uaR: [-0.4, 0, -0.1], elR: [-0.55] },
+    { hp: [0, 0.02, 0], spine: [0.05], thL: [-0.05], knL: [0.1], thR: [-0.35], knR: [1.0], anR: [0.15], uaL: [0, 0, 0.1], uaR: [0, 0, -0.1], elL: [-0.35], elR: [-0.35] }),
+  dodge: clip(0.62, false, [
+    [0, { hp: [0, -0.08, 0], thL: [-0.3, 0, 0.1], knL: [0.5], thR: [-0.3, 0, -0.1], knR: [0.5], spine: [0.2] }],
+    [0.13, { hp: [0, -0.32, 0], thL: [-0.45, 0, 0.7], knL: [1.15], anL: [-0.35, 0, -0.35], thR: [-0.1, 0, -0.55], knR: [0.15], anR: [0.2, 0, 0.3], spine: [0.25, 0, -0.45], chest: [0.1, 0.2, -0.15], head: [0, 0, 0.3], uaL: [-0.3, 0, 1.3], elL: [-0.8], uaR: [-0.6, 0, -1.9], elR: [-1.0] }],
+    [0.38, { hp: [0, -0.34, 0], thL: [-0.5, 0, 0.75], knL: [1.25], anL: [-0.4, 0, -0.4], thR: [-0.1, 0, -0.6], knR: [0.12], anR: [0.2, 0, 0.35], spine: [0.3, 0, -0.5], chest: [0.1, 0.25, -0.15], head: [0, -0.2, 0.3], uaL: [-0.2, 0, 1.4], elL: [-0.6], uaR: [-0.5, 0, -2.1], elR: [-0.8] }],
+    [0.62, { hp: [0, -0.06, 0], thL: [-0.2, 0, 0.15], knL: [0.35], thR: [-0.2, 0, -0.12], knR: [0.35], spine: [0.1] }]]),
+  duck: clip(0.8, false, [
+    [0, { hp: [0, -0.05, 0] }],
+    [0.14, { hp: [0, -0.58, -0.1], thL: [-1.7, 0, 0.15], knL: [2.3], anL: [-0.6], thR: [-1.7, 0, -0.15], knR: [2.3], anR: [-0.6], spine: [0.7], chest: [0.3], head: [0.4], uaL: [-2.7, 0, 0.35], elL: [-1.5], uaR: [-2.7, 0, -0.35], elR: [-1.5] }],
+    [0.55, { hp: [0, -0.58, -0.1], thL: [-1.7, 0, 0.15], knL: [2.3], anL: [-0.6], thR: [-1.7, 0, -0.15], knR: [2.3], anR: [-0.6], spine: [0.75], chest: [0.3], head: [0.45, 0.1, 0], uaL: [-2.75, 0, 0.3], elL: [-1.55], uaR: [-2.75, 0, -0.3], elR: [-1.55] }],
+    [0.8, { hp: [0, -0.12, 0], thL: [-0.4], knL: [0.7], anL: [-0.2], thR: [-0.4], knR: [0.7], anR: [-0.2], spine: [0.3] }]]),
+  panic: clip(0.5, true, [
+    [0, { hp: [0, -0.1, 0], spine: [-0.12], head: [0.3, 0.45, 0], uaL: [-1.9, 0, -0.35], elL: [-1.9], uaR: [-1.9, 0, 0.35], elR: [-1.9], thL: [-0.35, 0, 0.1], knL: [0.6], anL: [-0.25], thR: [-0.35, 0, -0.1], knR: [0.6], anR: [-0.25] }],
+    [0.25, { hp: [0.02, -0.12, 0], spine: [-0.15, 0, 0.05], head: [0.35, 0.55, 0], uaL: [-1.95, 0, -0.3], elL: [-1.95], uaR: [-1.85, 0, 0.4], elR: [-1.85], thL: [-0.37, 0, 0.1], knL: [0.65], anL: [-0.27], thR: [-0.33, 0, -0.1], knR: [0.58], anR: [-0.24] }],
+    [0.5, { hp: [0, -0.1, 0], spine: [-0.12], head: [0.3, 0.45, 0], uaL: [-1.9, 0, -0.35], elL: [-1.9], uaR: [-1.9, 0, 0.35], elR: [-1.9], thL: [-0.35, 0, 0.1], knL: [0.6], anL: [-0.25], thR: [-0.35, 0, -0.1], knR: [0.6], anR: [-0.25] }]]),
+  knockdown: clip(0.95, false, [
+    [0, { spine: [-0.45], chest: [-0.2], head: [-0.6], uaL: [-0.3, 0, 1.2], uaR: [-0.3, 0, -1.2], elL: [-0.6], elR: [-0.6], hp: [0, 0, -0.05], thL: [-0.2], knL: [0.3] }],
+    [0.18, { hips: [-0.5], hp: [0, -0.25, -0.25], spine: [-0.3], head: [-0.35], uaL: [-1.0, 0, 1.5], uaR: [-1.0, 0, -1.5], elL: [-0.4], elR: [-0.4], thL: [-0.6], knL: [0.6], thR: [-0.3], knR: [0.4] }],
+    [0.45, { hips: [-1.5], hp: [0, -0.8, -0.5], spine: [0.1], head: [0.3], uaL: [0.2, 0, 1.5], uaR: [0.2, 0, -1.5], elL: [-0.3], elR: [-0.3], thL: [-1.0], knL: [0.5], thR: [-0.7], knR: [0.3] }],
+    [0.62, { hips: [-1.5], hp: [0, -0.81, -0.55], head: [0.1], uaL: [0.1, 0, 1.3], elL: [-0.3], uaR: [0.05, 0, -1.4], thL: [-0.25], knL: [0.2], thR: [-0.15], knR: [0.5] }],
+    [0.95, STAND_LIE]]),
+  getup: clip(1.15, false, [
+    [0, STAND_LIE],
+    [0.35, { hips: [-1.5], hp: [0, -0.81, -0.55], spine: [1.1], chest: [0.2], head: [0.25], thL: [-0.5], knL: [1.4], anL: [0.2], thR: [-0.3, 0, -0.1], knR: [0.9], uaL: [0.5, 0, 0.4], elL: [-0.1], uaR: [0.5, 0, -0.4], elR: [-0.1] }],
+    [0.75, { hips: [0.3], hp: [0, -0.42, -0.15], spine: [0.4], thL: [-1.6, 0, 0.15], knL: [2.0], anL: [-0.7], thR: [-1.6, 0, -0.15], knR: [2.0], anR: [-0.7], uaL: [-0.6, 0, 0.3], elL: [-0.6], uaR: [-0.6, 0, -0.3], elR: [-0.6] }],
+    [1.15, IDLE_A]]),
+  bow: clip(1.8, false, [[0, IDLE_A], [0.45, { spine: [0.85], chest: [0.3], head: [0.3], hp: [0, -0.02, -0.07], uaL: [0.1, 0, 0.05], uaR: [0.1, 0, -0.05], elL: [-0.1], elR: [-0.1] }], [1.3, { spine: [0.9], chest: [0.3], head: [0.35], hp: [0, -0.02, -0.07], uaL: [0.1, 0, 0.05], uaR: [0.1, 0, -0.05], elL: [-0.1], elR: [-0.1] }], [1.8, IDLE_A]]),
+  plead: clip(1.6, false, [[0, IDLE_A],
+    [0.3, { ...IDLE_A, spine: [0.25], head: [0.15], uaL: [-0.75, 0, -0.38], elL: [-1.65], uaR: [-0.75, 0, 0.38], elR: [-1.65] }],
+    [0.5, { ...IDLE_A, spine: [0.25, 0.08, 0], head: [0.15], uaL: [-0.6, 0, -0.38], elL: [-1.75], uaR: [-0.6, 0, 0.38], elR: [-1.75] }],
+    [0.7, { ...IDLE_A, spine: [0.25, -0.08, 0], head: [0.15], uaL: [-0.78, 0, -0.38], elL: [-1.62], uaR: [-0.78, 0, 0.38], elR: [-1.62] }],
+    [0.9, { ...IDLE_A, spine: [0.25, 0.08, 0], head: [0.15], uaL: [-0.6, 0, -0.38], elL: [-1.75], uaR: [-0.6, 0, 0.38], elR: [-1.75] }],
+    [1.2, { ...IDLE_A, spine: [0.25], head: [0.15], uaL: [-0.75, 0, -0.38], elL: [-1.65], uaR: [-0.75, 0, 0.38], elR: [-1.65] }],
+    [1.6, IDLE_A]]),
+  p_idle: clip(2.4, true, [[0, P_SET], [1.2, { ...P_SET, spine: [0.16], chest: [0.03], head: [0.03, 0.3, 0] }], [2.4, P_SET]]),
+  windup: clip(0.45, false, [[0, P_SET], [0.2, { ...P_SET, hips: [0, -0.7, 0], head: [0, 0.8, 0], thL: [-0.7], knL: [0.9], uaL: [-0.55, 0, -0.28], uaR: [-0.55, 0, 0.28] }], [0.45, P_LIFT]]),
+  pitch: clip(0.66, false, [
+    [0, P_LIFT],
+    [0.12, { hips: [0, -1.1, 0], hp: [0, -0.15, 0.3], thL: [-0.8, 0, 0.1], knL: [0.5], thR: [0.15], knR: [0.5], anR: [0.3], spine: [-0.05, 0, 0.1], chest: [0, -0.35, 0], head: [0, 1.3, 0], uaL: [0, 0, 1.4], elL: [-0.4], uaR: [-1.57, 0, -1.57], elR: [-1.6] }],
+    [0.2, { hips: [0, 0.2, 0], hp: [0, -0.2, 0.5], thL: [-0.7], knL: [0.4], anL: [0.2], thR: [0.5], knR: [0.4], spine: [0.45], chest: [0.15, 0.3, 0], head: [-0.3, -0.4, 0], uaL: [-0.4, 0, 0.6], elL: [-1.8], uaR: [-2.3, 0, -0.4], elR: [-0.25] }],
+    [0.36, { hips: [0, 0.45, 0], hp: [0, -0.25, 0.55], spine: [0.75], chest: [0.2, 0.3, 0], head: [-0.6, -0.5, 0], thL: [-0.8], knL: [0.7], anL: [0.15], thR: [0.9], knR: [1.0], uaR: [-0.5, 0, 0.7], elR: [-0.7], uaL: [0.2, 0, 0.4], elL: [-1.6] }],
+    [0.66, { ...P_SET, hp: [0, 0, 0.2] }]]),
+};
+
+function sampleClip(c, t, mirrorIt, out) {
+  const keys = c.keys, n = keys.length;
+  t = c.loop ? ((t % c.dur) + c.dur) % c.dur : clamp(t, 0, c.dur);
+  let i = 0; while (i < n - 2 && t > keys[i + 1].t) i++;
+  const k1 = keys[i], k2 = keys[i + 1];
+  const idx = j => c.loop ? (j < 0 ? j + n - 1 : j > n - 1 ? j - (n - 1) : j) : clamp(j, 0, n - 1);
+  const k0 = keys[idx(i - 1)], k3 = keys[idx(i + 2)];
+  const u = clamp((t - k1.t) / Math.max(1e-6, k2.t - k1.t), 0, 1), u2 = u*u, u3 = u2*u;
+  for (const ch of CH) {
+    const a = k0.p[ch], p1 = k1.p[ch], p2 = k2.p[ch], d = k3.p[ch], r = out[ch] || (out[ch] = [0,0,0]);
+    for (let j = 0; j < 3; j++) r[j] = 0.5*((2*p1[j]) + (-a[j] + p2[j])*u + (2*a[j] - 5*p1[j] + 4*p2[j] - d[j])*u2 + (-a[j] + 3*p1[j] - 3*p2[j] + d[j])*u3);
+  }
+  if (mirrorIt) { const m = mirror(out); for (const ch of CH) out[ch] = m[ch]; }
+  return out;
+}
+class Animator {
+  constructor(rig) { this.rig = rig; this.cur = null; this.prev = null; this.w = 1; this.fadeDur = 0.15; this.A = {}; this.B = {}; }
+  play(name, { mirror = false, fade = 0.18, restart = false } = {}) {
+    if (!restart && this.cur && this.cur.name === name && this.cur.mirror === mirror) return;
+    this.prev = this.cur; this.cur = { name, c: CLIPS[name], t: 0, mirror }; this.w = this.prev ? 0 : 1; this.fadeDur = fade;
+  }
+  get time() { return this.cur ? this.cur.t : 0; }
+  update(dt) {
+    const cur = this.cur; cur.t += dt; if (this.prev) this.prev.t += dt;
+    this.w = Math.min(1, this.w + dt/this.fadeDur);
+    const B = sampleClip(cur.c, cur.t, cur.mirror, this.B);
+    let P = B;
+    if (this.prev && this.w < 1) {
+      const A = sampleClip(this.prev.c, this.prev.t, this.prev.mirror, this.A), k = this.w*this.w*(3 - 2*this.w);
+      for (const ch of CH) for (let j = 0; j < 3; j++) A[ch][j] = lerp(A[ch][j], B[ch][j], k);
+      P = A;
+    }
+    const b = this.rig.b;
+    for (const ch of CH) { if (ch === 'hp') continue; const v = P[ch]; b[ch] && b[ch].rotation.set(v[0], v[1], v[2]); }
+    b.hips.position.set(P.hp[0], this.rig.rest.hipsY + P.hp[1], P.hp[2]);
+  }
+}
+
+// ================= 오버레이 텍스트 =================
+const floats = [];
+function floatAt(pos, html, cls, life, rise, owner) {
+  const el = document.createElement('div'); el.className = 'float ' + cls; el.innerHTML = html; document.body.appendChild(el);
+  const f = { el, pos: pos.clone(), life, t: 0, rise, owner }; floats.push(f); return f;
+}
+function say(p, text) { if (p.bubble) p.bubble.t = p.bubble.life; p.bubble = floatAt(new V3(), text, 'bubble', 1.6, 0, p); }
+const comboEl = document.getElementById('comboMsg'); let comboTimer = 0;
+function showCombo(text) { comboEl.textContent = text; comboEl.style.opacity = 1; comboTimer = 0.9; }
+
+// 먼지
+const dustTex = canvasTex(64, 64, (x) => { const g = x.createRadialGradient(32, 32, 2, 32, 32, 30); g.addColorStop(0, 'rgba(222,190,150,0.9)'); g.addColorStop(1, 'rgba(222,190,150,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); });
+const dusts = [];
+function dust(pos, n, size = 0.6) {
+  for (let i = 0; i < n; i++) {
+    const s = new THREE.Sprite(noOutline(new THREE.SpriteMaterial({ map: dustTex, transparent: true, depthWrite: false })));
+    s.position.copy(pos).add(new V3(rand(-0.3, 0.3), rand(0.05, 0.25), rand(-0.3, 0.3)));
+    s.scale.setScalar(size*rand(0.6, 1)); scene.add(s);
+    dusts.push({ s, v: new V3(rand(-1, 1), rand(0.3, 1.2), rand(-1, 1)), t: 0, life: rand(0.6, 1.1), g: size });
+  }
+}
+
+// 사운드
+let actx = null;
+function sfx(type) {
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+    o.connect(g); g.connect(actx.destination);
+    if (type === 'throw') { o.type = 'triangle'; o.frequency.setValueAtTime(600, t); o.frequency.exponentialRampToValueAtTime(140, t + 0.18); g.gain.setValueAtTime(0.1, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.2); o.start(t); o.stop(t + 0.2); }
+    else if (type === 'hit') { o.type = 'square'; o.frequency.setValueAtTime(190, t); o.frequency.exponentialRampToValueAtTime(45, t + 0.25); g.gain.setValueAtTime(0.18, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.28); o.start(t); o.stop(t + 0.3); }
+    else { o.type = 'sine'; o.frequency.setValueAtTime(320, t); o.frequency.exponentialRampToValueAtTime(660, t + 0.12); g.gain.setValueAtTime(0.06, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.15); o.start(t); o.stop(t + 0.16); }
+  } catch (e) {}
+}
+
+// ================= 게임 상태 =================
+let players = [], balls = [], ballId = 0, pickables = [], pitcher = null, heldBall = null;
+let playing = false, timeLeft = ROUND_TIME, score = 0, throws = 0, hits = 0, combo = 0, maxCombo = 0;
+let charging = false, charge = 0, power = 0, cooldown = 0, shakeT = 0, slowT = 0, timeScale = 1, cheerT = 0;
+let pendingThrow = null, teamColor = TEAMS[0].color, teamName = TEAMS[0].name;
+const mouse = new THREE.Vector2(0, 0.1), raycaster = new THREE.Raycaster();
+const hud = document.getElementById('hud'), powerWrap = document.getElementById('powerWrap'), powerFill = document.getElementById('powerFill');
+const reticle = document.getElementById('reticle'), overlay = document.getElementById('overlay');
+const ballTex = canvasTex(256, 128, (x, w, h) => {
+  x.fillStyle = '#fafafa'; x.fillRect(0, 0, w, h); x.strokeStyle = '#dc2626'; x.lineWidth = 5;
+  for (const off of [0, w/2]) { x.beginPath(); for (let i = 0; i <= w/2; i += 4) { const yy = h/2 + Math.sin(i/(w/2)*Math.PI*2)*h*0.3; i ? x.lineTo(off + i, yy) : x.moveTo(off + i, yy); } x.stroke(); }
+});
+const ballGeo = new THREE.SphereGeometry(BALL_R, 20, 14), ballMat = toon(0xffffff, { map: ballTex });
+
+// ===== 던지는 아이템 (매 투구 랜덤): 야구공 · 야구배트 · 치킨닭다리 · 맥주병 =====
+const ITEM_TYPES = ['ball', 'bat', 'chicken', 'beer'];
+const cyl = (rt, rb, h, seg = 12) => new THREE.CylinderGeometry(rt, rb, h, seg);
+function makeItemMesh(type) {
+  let g;
+  if (type === 'bat') {
+    g = new THREE.Group();
+    const wood = toon(0xb07a3c);
+    const barrel = new THREE.Mesh(cyl(0.05, 0.028, 0.5), wood); barrel.position.y = 0.17;
+    const grip = new THREE.Mesh(cyl(0.023, 0.023, 0.2), toon(0x2b2b2b)); grip.position.y = -0.07;
+    const knob = new THREE.Mesh(cyl(0.033, 0.033, 0.03), wood); knob.position.y = -0.18;
+    g.add(barrel, grip, knob);
+  } else if (type === 'chicken') {
+    g = new THREE.Group();
+    const meat = new THREE.Mesh(new THREE.SphereGeometry(0.1, 14, 12), toon(0xca7a2c)); meat.scale.set(1, 1.2, 1); meat.position.y = 0.03;
+    const bone = new THREE.Mesh(cyl(0.017, 0.017, 0.15, 8), toon(0xf1e7cf)); bone.position.y = -0.11;
+    const knuckle = new THREE.Mesh(new THREE.SphereGeometry(0.032, 8, 8), toon(0xf1e7cf)); knuckle.position.y = -0.18;
+    g.add(meat, bone, knuckle);
+  } else if (type === 'beer') {
+    g = new THREE.Group();
+    const glass = toon(0x2f6a33);
+    const body = new THREE.Mesh(cyl(0.058, 0.058, 0.24, 14), glass); body.position.y = 0;
+    const shoulder = new THREE.Mesh(cyl(0.026, 0.058, 0.07, 14), glass); shoulder.position.y = 0.155;
+    const neck = new THREE.Mesh(cyl(0.024, 0.026, 0.08, 12), glass); neck.position.y = 0.23;
+    const cap = new THREE.Mesh(cyl(0.027, 0.027, 0.02, 12), toon(0xe0b020)); cap.position.y = 0.28;
+    const label = new THREE.Mesh(cyl(0.0595, 0.0595, 0.1, 14), toon(0xf1e8c8)); label.position.y = -0.01;
+    g.add(body, shoulder, neck, cap, label);
+  } else {
+    return new THREE.Mesh(ballGeo, ballMat);
+  }
+  g.traverse(m => { if (m.isMesh) m.castShadow = true; });
+  return g;
+}
+// 손에 쥘 때의 로컬 오프셋 (오른손 본 기준)
+const HOLD = {
+  ball:    { p: [0, -0.08, 0.03], r: [0, 0, 0] },
+  bat:     { p: [0, -0.1, 0.04],  r: [0.3, 0, 0] },
+  chicken: { p: [0, -0.12, 0.04], r: [0.4, 0, 0] },
+  beer:    { p: [0, -0.14, 0.04], r: [0.2, 0, 0] },
+};
+let heldItemType = 'ball';
+function setHeldItem(type) {
+  if (!pitcher) return;
+  if (heldBall && heldBall.parent) heldBall.parent.remove(heldBall);
+  heldItemType = type;
+  heldBall = makeItemMesh(type);
+  const h = HOLD[type] || HOLD.ball;
+  heldBall.position.set(...h.p); heldBall.rotation.set(...h.r);
+  pitcher.rig.b.haR.add(heldBall);
+}
+
+function teamMats(color) {
+  const c = new THREE.Color(color);
+  return { jersey: toon(c), cap: toon(c.clone().multiplyScalar(0.85)), socks: toon(c.clone().multiplyScalar(0.75)), pants: toon(0xf1f1ee) };
+}
+function clearWorld() {
+  for (const p of players) scene.remove(p.rig.root); players = []; pickables = [];
+  if (pitcher) scene.remove(pitcher.rig.root); pitcher = null;
+  for (const b of balls) { scene.remove(b.mesh); scene.remove(b.trail); } balls = [];
+  for (const f of floats) f.el.remove(); floats.length = 0;
+  for (const d of dusts) scene.remove(d.s); dusts.length = 0;
+}
+function newTarget(p) { p.target.set(rand(BOUNDS.x0, BOUNDS.x1), 0, rand(BOUNDS.z0, BOUNDS.z1)); p.wait = rand(0.8, 3); }
+function setupWorld() {
+  clearWorld(); buildStands(teamColor);
+  const tm = teamMats(teamColor);
+  // 투수 = 분노한 팬 (팀 유니폼 + 청바지)
+  const prig = makeCharacter({ jersey: tm.jersey, cap: tm.cap, pants: toon(0x3b5b8c), socks: toon(0x2b3a55), skin: SKINS[0], glove: true, number: '' });
+  prig.root.position.set(0, 0.25, 0.1); prig.root.rotation.y = Math.PI; scene.add(prig.root);
+  pitcher = { rig: prig, anim: new Animator(prig), state: 'set' }; pitcher.anim.play('p_idle');
+  setHeldItem(pick(ITEM_TYPES));
+  [7, 10, 25, 33, 52, 99].forEach((n, i) => {
+    const rig = makeCharacter({ ...tm, skin: SKINS[i % SKINS.length], glove: i % 2 === 0, number: String(n) });
+    rig.root.position.set(-5.5 + i*2.2, 0, rand(-16, -11)); scene.add(rig.root);
+    const p = { rig, anim: new Animator(rig), num: n, state: 'idle', t: 0, target: new V3(), wait: 0, vel: new V3(), knock: new V3(), seen: new Set(), tauntT: rand(1.5, 6), bubble: null, look: 0, dustDone: false };
+    p.anim.play('idle'); p.anim.cur.t = Math.random()*3; newTarget(p); players.push(p);
+    pickables.push(...rig.meshes);
+  });
+}
+function startGame() {
+  setupWorld();
+  timeLeft = ROUND_TIME; score = throws = hits = combo = maxCombo = 0; charging = false; cooldown = 0; pendingThrow = null;
+  boardMsg = '분풀이 시작!'; boardDirty = true;
+  playing = true; overlay.style.display = 'none'; hud.style.display = 'flex'; powerWrap.style.display = 'flex';
+}
+function endGame() {
+  playing = false; charging = false; hud.style.display = 'none'; powerWrap.style.display = 'none';
+  const acc = throws ? Math.round(hits/throws*100) : 0;
+  const verdict = score >= 2500 ? '속이 시원하다 😤' : score >= 1000 ? '조금 풀렸다 🙂' : '아직 화가 안 풀렸다 😡';
+  boardMsg = verdict; boardDirty = true;
+  overlay.innerHTML = `<div class="card"><h1>${verdict}</h1><p>오늘의 분풀이 결과</p>
+    <div class="stats"><div class="stat"><div>점수</div><div>${score}</div></div><div class="stat"><div>명중률</div><div>${acc}%</div></div>
+    <div class="stat"><div>명중</div><div>${hits} / ${throws}</div></div><div class="stat"><div>최대 콤보</div><div>${maxCombo}</div></div></div>
+    <div class="btns"><button class="lose" id="again">한 번 더</button><button class="win" id="home">처음으로</button></div></div>`;
+  overlay.style.display = 'flex';
+  document.getElementById('again').onclick = startGame;
+  document.getElementById('home').onclick = showStart;
+}
+function showStart() { showLanding(); }   // 진입점 / '처음으로'
+function showLanding() {
+  playing = false; hud.style.display = 'none'; powerWrap.style.display = 'none';
+  setupWorld(); boardMsg = '패배 분풀이 야구'; boardDirty = true;
+  overlay.innerHTML = `<div class="card">
+    <div class="hero-emoji">⚾</div>
+    <h1>패배 분풀이 야구</h1>
+    <p>응원팀이 진 날, 투수가 되어<br><b>야구공·배트·치킨·맥주병</b>을 던지며 분풀이하세요.<br>60초 동안 마음껏 던지면 속이 좀 풀릴지도?</p>
+    <div class="btns"><button class="primary" id="go">시작하기 →</button></div>
+    <div class="small">팬이 만든 비공식 게임 · 구단 로고·실제 선수 미사용(가상 선수)</div>
+  </div>`;
+  overlay.style.display = 'flex';
+  document.getElementById('go').onclick = () => { sfx('ui'); showTeamSelect(); };
+}
+function showTeamSelect() {
+  boardMsg = '응원하는 팀은?'; boardDirty = true;
+  overlay.innerHTML = `<div class="card">
+    <div class="steps"><i></i><i class="on"></i></div>
+    <h1>응원하는 팀 선택</h1>
+    <h2>팀을 고르고 오늘 경기 결과를 알려주세요</h2>
+    <div class="teams">${TEAMS.map(t => `<div class="team${t.name === teamName ? ' on' : ''}" data-name="${t.name}" data-c="${t.color}"><span class="dot" style="background:${t.color}"></span>${t.name}</div>`).join('')}</div>
+    <div class="btns"><button class="lose" id="lost">졌다 😡</button><button class="win" id="won">이겼다 😊</button></div>
+    <div class="btns" style="margin-top:10px"><button class="ghost" id="back">← 뒤로</button></div>
+  </div>`;
+  overlay.style.display = 'flex';
+  overlay.querySelectorAll('.team').forEach(s => s.onclick = () => { teamColor = s.dataset.c; teamName = s.dataset.name; overlay.querySelectorAll('.team').forEach(x => x.classList.toggle('on', x === s)); setupWorld(); });
+  document.getElementById('lost').onclick = () => { sfx('ui'); startGame(); };
+  document.getElementById('won').onclick = () => {
+    overlay.innerHTML = `<div class="card"><h1>축하해요 🎉</h1><p><b>${teamName}</b> 팬 여러분,<br>오늘은 분풀이할 일이 없네요!</p><div class="btns"><button class="win" id="back2">돌아가기</button><button class="lose" id="anyway">그래도 던지기</button></div></div>`;
+    document.getElementById('back2').onclick = showTeamSelect; document.getElementById('anyway').onclick = startGame;
+  };
+  document.getElementById('back').onclick = showLanding;
+}
+
+// ================= 입력 =================
+function setMouse(e) { mouse.set(e.clientX/innerWidth*2 - 1, -(e.clientY/innerHeight)*2 + 1); reticle.style.left = e.clientX + 'px'; reticle.style.top = e.clientY + 'px'; }
+function beginCharge() { if (!playing || cooldown > 0 || charging) return; charging = true; charge = 0; setHeldItem(pick(ITEM_TYPES)); pitcher.anim.play('windup', { fade: 0.12 }); }
+function release() { if (!playing || !charging) return; charging = false; queueThrow(); }
+const cv = renderer.domElement;
+cv.addEventListener('pointermove', e => { setMouse(e); if (playing) reticle.style.display = 'block'; });
+cv.addEventListener('pointerdown', e => { setMouse(e); if (playing) reticle.style.display = 'block'; beginCharge(); try { cv.setPointerCapture(e.pointerId); } catch (_) {} });
+cv.addEventListener('pointerup', e => { setMouse(e); release(); });
+addEventListener('keydown', e => { if (e.code === 'Space') { e.preventDefault(); beginCharge(); } });
+addEventListener('keyup', e => { if (e.code === 'Space') release(); });
+addEventListener('resize', () => { camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+
+function aimPoint() {
+  raycaster.setFromCamera(mouse, camera);
+  const hit = raycaster.intersectObjects(pickables, false)[0];
+  if (hit) return hit.point.clone();
+  const r = raycaster.ray, tz = r.direction.z < -0.05 ? (PLATE_Z - r.origin.z)/r.direction.z : 20;
+  return r.origin.clone().addScaledVector(r.direction, clamp(tz, 4, 30));
+}
+function queueThrow() {
+  pendingThrow = { target: aimPoint(), power, t: 0 };
+  pitcher.anim.play('pitch', { fade: 0.06 }); cooldown = 0.7; throws++;
+}
+function spawnBall(pt) {
+  const start = new V3(); heldBall.getWorldPosition(start); heldBall.visible = false;
+  const speed = 16 + pt.power*24, t = start.distanceTo(pt.target)/speed;
+  const vel = pt.target.clone().sub(start).divideScalar(t); vel.y += 0.5*G*t;
+  const mesh = makeItemMesh(heldItemType); mesh.position.copy(start); mesh.castShadow = true; scene.add(mesh);
+  const pts = new Float32Array(8*3); for (let i = 0; i < 8; i++) start.toArray(pts, i*3);
+  const tg = new THREE.BufferGeometry(); tg.setAttribute('position', new THREE.BufferAttribute(pts, 3));
+  const trail = new THREE.Line(tg, noOutline(new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55 })));
+  scene.add(trail);
+  balls.push({ id: ballId++, mesh, trail, vel, age: 0, resolved: false, bounced: false, speed });
+  sfx('throw');
+}
+
+// ================= 업데이트 =================
+function resolveMiss(b) { if (!b.resolved) { b.resolved = true; combo = 0; boardMsg = pick(['아깝다!', '빗나갔다…', '다시 던져!']); boardDirty = true; } }
+function onHit(p, b) {
+  b.resolved = true; hits++; combo++; maxCombo = Math.max(maxCombo, combo);
+  const pts = 100 + (combo - 1)*50 + Math.round((b.speed - 16)*4); score += pts;
+  p.state = 'down'; p.t = 0; p.dustDone = false;
+  p.rig.root.rotation.y = Math.atan2(-b.vel.x, -b.vel.z);
+  p.knock.set(b.vel.x, 0, b.vel.z).normalize().multiplyScalar(1.6 + b.speed*0.05);
+  p.anim.play('knockdown', { fade: 0.05, restart: true });
+  const hp = b.mesh.position.clone();
+  b.vel.set(-b.vel.x*0.2, 3, -b.vel.z*0.2);
+  floatAt(hp.clone().add(new V3(0, 0.2, 0)), '퍽!', 'pow', 0.6, 0.8);
+  floatAt(p.rig.root.position.clone().add(new V3(0, 2.3, 0)), '+' + pts, 'pts', 0.9, 1.4);
+  say(p, pick(HIT_LINES)); sfx('hit'); shakeT = 0.18; slowT = 0.22; cheerT = 1.2;
+  boardMsg = `${p.num}번 명중! +${pts}`; boardDirty = true;
+  if (combo >= 2) showCombo(combo + ' 콤보!');
+}
+const _a = new V3(), _h = new V3(), _seg = new V3(), _tmp = new V3();
+function distToSeg(p, a, b) { _seg.subVectors(b, a); const t = clamp(_tmp.subVectors(p, a).dot(_seg)/_seg.lengthSq(), 0, 1); return _tmp.copy(a).addScaledVector(_seg, t).distanceTo(p); }
+function updateBalls(dt) {
+  for (let i = balls.length - 1; i >= 0; i--) {
+    const b = balls[i], p = b.mesh.position;
+    b.age += dt; b.vel.y -= G*dt; p.addScaledVector(b.vel, dt); b.mesh.rotation.x -= dt*25;
+    if (p.y < BALL_R) { p.y = BALL_R; b.vel.y = Math.abs(b.vel.y)*0.4; b.vel.x *= 0.7; b.vel.z *= 0.7; if (!b.bounced) { b.bounced = true; resolveMiss(b); dust(p, 2, 0.35); } }
+    if (p.z < PLATE_Z - 9.3 && b.vel.z < 0) { b.vel.z *= -0.35; resolveMiss(b); }
+    const arr = b.trail.geometry.attributes.position.array; arr.copyWithin(3, 0, arr.length - 3); p.toArray(arr, 0); b.trail.geometry.attributes.position.needsUpdate = true;
+    b.trail.material.opacity = b.resolved ? Math.max(0, b.trail.material.opacity - dt*2) : 0.55;
+    if (!b.resolved) {
+      for (const pl of players) {
+        if (pl.state === 'down' || pl.state === 'getup') continue;
+        pl.rig.b.head.getWorldPosition(_h); _h.y += 0.12;
+        _a.copy(pl.rig.root.position).setY(0.1);
+        if (distToSeg(p, _a, _h) < 0.27 + BALL_R) { onHit(pl, b); break; }
+      }
+    }
+    if (b.age > 4) { resolveMiss(b); scene.remove(b.mesh); scene.remove(b.trail); balls.splice(i, 1); }
+  }
+}
+function leftVec(pl) { const y = pl.rig.root.rotation.y; return new V3(Math.cos(y), 0, -Math.sin(y)); }
+function scanBalls(pl) {
+  const c = pl.rig.root.position.clone().setY(1.1);
+  for (const b of balls) {
+    if (b.resolved || pl.seen.has(b.id)) continue;
+    const rel = c.clone().sub(b.mesh.position), ts = rel.dot(b.vel)/b.vel.lengthSq();
+    if (ts <= 0 || ts > 0.6) continue;
+    const closest = b.mesh.position.clone().addScaledVector(b.vel, ts); closest.y -= 0.5*G*ts*ts;
+    if (Math.hypot(closest.x - c.x, closest.z - c.z) > 1.0) continue;
+    pl.seen.add(b.id); pl.t = 0;
+    const chance = clamp(0.82 - (b.speed - 16)/24*0.57, 0.25, 0.82);
+    if (Math.random() < chance) {
+      pl.state = 'react'; pl.reactT = rand(0.04, 0.16);
+      if (closest.y > 1.2 && Math.random() < 0.45) pl.mode = 'duck';
+      else {
+        pl.mode = 'dodge';
+        const L = leftVec(pl), side = Math.sign(_tmp.subVectors(c, closest).dot(L)) || (Math.random() < 0.5 ? -1 : 1);
+        let dir = side; const dest = c.clone().addScaledVector(L, dir*2);
+        if (dest.x > BOUNDS.x1 + 1 || dest.x < BOUNDS.x0 - 1) dir *= -1;
+        pl.dodgeDir = dir; pl.vel.copy(L).multiplyScalar(dir*6.5);
+      }
+    } else { pl.state = 'panic'; pl.anim.play('panic', { fade: 0.08 }); say(pl, pick(PANIC_LINES)); }
+    return;
+  }
+}
+function toIdle(pl) { pl.state = 'idle'; pl.t = 0; newTarget(pl); pl.wait = rand(0.3, 1.5); }
+function updatePlayer(pl, dt) {
+  const root = pl.rig.root, pos = root.position; pl.t += dt;
+  let faceYaw = Math.atan2(pitcher.rig.root.position.x - pos.x, pitcher.rig.root.position.z - pos.z), turn = true;
+  switch (pl.state) {
+    case 'idle': {
+      const to = _tmp.copy(pl.target).sub(pos); to.y = 0; const dist = to.length();
+      if (dist > 0.3 && pl.wait <= 0) { to.normalize(); pos.addScaledVector(to, 1.5*dt); faceYaw = Math.atan2(to.x, to.z); pl.anim.play('walk', { fade: 0.25 }); }
+      else { pl.anim.play('idle', { fade: 0.3 }); if (dist <= 0.3) newTarget(pl); pl.wait -= dt; }
+      if (playing && (pl.tauntT -= dt) < 0) {
+        pl.tauntT = rand(5, 10); const r = Math.random();
+        if (r < 0.4) { pl.state = 'taunt'; pl.t = 0; pl.tauntDur = 1.8; pl.anim.play('bow', { fade: 0.2 }); say(pl, '죄송합니다…'); }
+        else if (r < 0.7) { pl.state = 'taunt'; pl.t = 0; pl.tauntDur = 1.6; pl.anim.play('plead', { fade: 0.2 }); say(pl, '살려주세요'); }
+        else say(pl, pick(IDLE_LINES));
+      }
+      scanBalls(pl); break;
+    }
+    case 'taunt': if (pl.t > pl.tauntDur) toIdle(pl); scanBalls(pl); break;
+    case 'react':
+      if ((pl.reactT -= dt) <= 0) {
+        pl.state = pl.mode; pl.t = 0;
+        if (pl.mode === 'dodge') { pl.anim.play('dodge', { mirror: pl.dodgeDir < 0, fade: 0.08, restart: true }); dust(pos, 2, 0.4); }
+        else pl.anim.play('duck', { fade: 0.08, restart: true });
+      }
+      break;
+    case 'dodge':
+      if (pl.t < 0.42) pos.addScaledVector(pl.vel, dt*(1 - pl.t/0.5));
+      if (pl.t > 0.62) { if (Math.random() < 0.5) say(pl, pick(DODGE_LINES)); toIdle(pl); }
+      break;
+    case 'duck': if (pl.t > 0.8) { if (Math.random() < 0.5) say(pl, pick(DODGE_LINES)); toIdle(pl); } break;
+    case 'panic': if (pl.t > 0.75) toIdle(pl); break;
+    case 'down':
+      turn = false; pos.addScaledVector(pl.knock, dt); pl.knock.multiplyScalar(Math.exp(-dt*4));
+      if (!pl.dustDone && pl.t > 0.42) { pl.dustDone = true; dust(pl.rig.b.hips.getWorldPosition(new V3()).setY(0), 7, 0.9); }
+      if (pl.t > 2.0) { pl.state = 'getup'; pl.t = 0; pl.anim.play('getup', { fade: 0.1 }); }
+      break;
+    case 'getup': turn = false; if (pl.t > 1.15) toIdle(pl); break;
+  }
+  pos.x = clamp(pos.x, BOUNDS.x0 - 2, BOUNDS.x1 + 2); pos.z = clamp(pos.z, BOUNDS.z0 - 2, BOUNDS.z1 + 1.5);
+  if (turn) root.rotation.y = lerpAng(root.rotation.y, faceYaw, 1 - Math.exp(-dt*7));
+  pl.anim.update(dt);
+  // 날아오는 공을 고개로 따라보기
+  let look = 0;
+  if (['idle', 'taunt', 'react', 'panic'].includes(pl.state)) {
+    const b = balls.find(b => !b.resolved);
+    if (b) look = clamp(wrapAng(Math.atan2(b.mesh.position.x - pos.x, b.mesh.position.z - pos.z) - root.rotation.y), -0.9, 0.9);
+  }
+  pl.look = lerp(pl.look, look, 1 - Math.exp(-dt*10));
+  pl.rig.b.head.rotation.y += pl.look;
+}
+function updatePitcher(dt) {
+  const a = pitcher.anim;
+  if (pendingThrow) { pendingThrow.t += dt; if (pendingThrow.t >= 0.19) { spawnBall(pendingThrow); pendingThrow = null; } }
+  if (a.cur.name === 'pitch' && a.time > 0.66) a.play('p_idle', { fade: 0.3 });
+  a.update(dt);
+  if (charging) { const tr = Math.sin(performance.now()/40)*0.015*power; pitcher.rig.b.chest.rotation.z += tr; }
+}
+function updateFloats(dt) {
+  for (let i = floats.length - 1; i >= 0; i--) {
+    const f = floats[i]; f.t += dt;
+    if (f.owner) { f.owner.rig.b.head.getWorldPosition(f.pos); f.pos.y += 0.45; }
+    else f.pos.y += f.rise*dt;
+    _tmp.copy(f.pos).project(camera);
+    f.el.style.left = (_tmp.x + 1)/2*innerWidth + 'px'; f.el.style.top = (1 - _tmp.y)/2*innerHeight + 'px';
+    f.el.style.opacity = _tmp.z > 1 ? 0 : Math.min(1, (f.life - f.t)*4);
+    if (f.t >= f.life) { f.el.remove(); floats.splice(i, 1); if (f.owner && f.owner.bubble === f) f.owner.bubble = null; }
+  }
+  for (let i = dusts.length - 1; i >= 0; i--) {
+    const d = dusts[i]; d.t += dt; d.s.position.addScaledVector(d.v, dt); d.v.multiplyScalar(Math.exp(-dt*2));
+    d.s.scale.setScalar(d.g*(1 + d.t*1.5)); d.s.material.opacity = Math.max(0, 1 - d.t/d.life)*0.8;
+    if (d.t > d.life) { scene.remove(d.s); dusts.splice(i, 1); }
+  }
+}
+
+const clock = new THREE.Clock();
+let boardTimer = 0;
+function loop() {
+  requestAnimationFrame(loop);
+  const rdt = Math.min(0.05, clock.getDelta());
+  if (slowT > 0) { slowT -= rdt; timeScale = 0.3; } else timeScale = lerp(timeScale, 1, 1 - Math.exp(-rdt*8));
+  const dt = rdt*timeScale;
+  if (playing) {
+    timeLeft -= rdt; if (timeLeft <= 0) { timeLeft = 0; endGame(); }
+    cooldown = Math.max(0, cooldown - dt); if (cooldown <= 0 && !pendingThrow && heldBall) heldBall.visible = true;
+    if (charging) { charge += rdt; const c = charge % 2; power = c < 1 ? c : 2 - c; } else if (!pendingThrow) power = 0;
+    powerFill.style.width = power*100 + '%';
+    document.getElementById('time').textContent = Math.ceil(timeLeft);
+    document.getElementById('score').textContent = score;
+    document.getElementById('acc').textContent = hits + '/' + throws;
+    document.getElementById('combo').textContent = combo;
+  } else reticle.style.display = 'none';
+  if (pitcher) { updatePitcher(dt); updateBalls(dt); for (const p of players) updatePlayer(p, dt); }
+  updateFloats(dt);
+  if ((boardTimer -= rdt) < 0 || boardDirty) { boardTimer = 0.25; drawBoard(); }
+  cheerT = Math.max(0, cheerT - rdt);
+  const tnow = performance.now()/1000;
+  crowdTextures.forEach((t, i) => { t.offset.y = cheerT > 0 ? Math.abs(Math.sin(tnow*14 + i*1.7))*0.06*Math.min(1, cheerT) : 0; });
+  if (comboTimer > 0 && (comboTimer -= rdt) <= 0) comboEl.style.opacity = 0;
+  camera.position.copy(CAM_BASE); camera.lookAt(CAM_LOOK);
+  if (shakeT > 0) { shakeT -= rdt; camera.position.x += rand(-0.04, 0.04); camera.position.y += rand(-0.04, 0.04); }
+  effect.render(scene, camera);
+}
+showStart();
+loop();
+window.__g = { get p() { return players; }, get b() { return balls; }, camera, CAM_BASE, CAM_LOOK, get pitcher() { return pitcher; }, V3 };
+</script>
+<script>
+window.addEventListener('error', e => { const o = document.getElementById('overlay'); if (o && o.textContent.includes('불러오는 중')) o.innerHTML = '<div class="card"><h1>불러오기 실패</h1><p>' + (e.message || '') + '</p></div>'; });
+</script>
+</body>
+</html>
